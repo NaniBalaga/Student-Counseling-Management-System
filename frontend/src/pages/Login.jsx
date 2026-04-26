@@ -2,29 +2,45 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { motion } from "framer-motion";
-import { User, Lock, ArrowRight } from "lucide-react";
+import { User, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 
-// ✅ Defined outside to prevent input focus loss on every keystroke
-const InputField = ({ icon: Icon, type, name, placeholder, formData, handleChange, errors }) => (
-  <div className="input-wrapper">
-    <div className="input-container">
-      <Icon className="input-icon" size={16} />
-      <input
-        type={type}
-        name={name}
-        placeholder={placeholder}
-        value={formData[name]}
-        onChange={handleChange}
-        className={`input-field ${errors[name] ? 'input-error' : ''}`}
-      />
+const InputField = ({ icon: Icon, type, name, placeholder, formData, handleChange, errors }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+  const inputType = isPassword ? (showPassword ? "text" : "password") : type;
+
+  return (
+    <div className="input-wrapper">
+      <div className="input-container">
+        <Icon className="input-icon" size={16} />
+        <input
+          type={inputType}
+          name={name}
+          placeholder={placeholder}
+          value={formData[name]}
+          onChange={handleChange}
+          className={`input-field ${errors[name] ? 'input-error' : ''} ${isPassword ? 'password-field' : ''}`}
+        />
+        {/* Password Eye Toggle */}
+        {isPassword && (
+          <button 
+            type="button" 
+            className="password-toggle" 
+            onClick={() => setShowPassword(!showPassword)}
+            tabIndex="-1"
+          >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        )}
+      </div>
+      {errors[name] && (
+        <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="error-text">
+          {errors[name]}
+        </motion.p>
+      )}
     </div>
-    {errors[name] && (
-      <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="error-text">
-        {errors[name]}
-      </motion.p>
-    )}
-  </div>
-);
+  );
+};
 
 const Login = () => {
   const navigate = useNavigate();
@@ -41,7 +57,6 @@ const Login = () => {
       ...formData,
       [e.target.name]: e.target.value,
     });
-    // Clear error for the specific field when user starts typing
     if (errors[e.target.name]) {
       setErrors({ ...errors, [e.target.name]: null });
     }
@@ -68,7 +83,6 @@ const Login = () => {
           formData
         );
 
-        // ✅ SAVE TOKEN + USER
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
 
@@ -85,7 +99,6 @@ const Login = () => {
   return (
     <>
       <style>{`
-        /* --- HIDE SCROLLBAR BUT KEEP SCROLL FUNCTIONALITY --- */
         ::-webkit-scrollbar {
           width: 0px;
           background: transparent;
@@ -95,8 +108,8 @@ const Login = () => {
           box-sizing: border-box;
           margin: 0;
           padding: 0;
-          -ms-overflow-style: none;  /* IE and Edge */
-          scrollbar-width: none;  /* Firefox */
+          -ms-overflow-style: none;  
+          scrollbar-width: none;  
         }
 
         .split-layout {
@@ -107,7 +120,6 @@ const Login = () => {
           overflow-x: hidden;
         }
 
-        /* --- LEFT SIDE (GRADIENT ONLY) --- */
         .left-side {
           flex: 1;
           position: relative;
@@ -148,7 +160,6 @@ const Login = () => {
           line-height: 1.5;
         }
 
-        /* --- RIGHT SIDE (FORM) --- */
         .right-side {
           flex: 1;
           display: flex;
@@ -174,7 +185,6 @@ const Login = () => {
           z-index: 1;
         }
 
-        /* --- TYPOGRAPHY & BUTTONS --- */
         .header-text {
           margin-bottom: 24px;
         }
@@ -190,7 +200,6 @@ const Login = () => {
           font-size: 13px;
         }
 
-        /* --- FORM STYLES --- */
         .form-layout {
           display: flex;
           flex-direction: column;
@@ -208,6 +217,7 @@ const Login = () => {
           position: absolute;
           left: 14px;
           color: #666;
+          transition: color 0.2s ease;
         }
         .input-field {
           width: 100%;
@@ -220,6 +230,9 @@ const Login = () => {
           outline: none;
           transition: all 0.2s ease;
         }
+        .input-field.password-field {
+          padding-right: 40px;
+        }
         .input-field::placeholder {
           color: #555;
         }
@@ -228,6 +241,27 @@ const Login = () => {
           background: #141414;
           box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.1);
         }
+        .input-field:focus + .input-icon {
+          color: #ffd700;
+        }
+        
+        /* Password Toggle Button */
+        .password-toggle {
+          position: absolute;
+          right: 14px;
+          background: none;
+          border: none;
+          color: #666;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          padding: 0;
+          transition: color 0.2s ease;
+        }
+        .password-toggle:hover {
+          color: #ffd700;
+        }
+
         .input-error {
           border-color: #ff4d4d;
         }
@@ -292,7 +326,6 @@ const Login = () => {
           text-decoration: underline;
         }
 
-        /* --- RESPONSIVE DESIGN (UPGRADED FOR MOBILE) --- */
         @media (max-width: 900px) {
           .split-layout {
             flex-direction: column;
@@ -301,7 +334,7 @@ const Login = () => {
           .left-side {
             padding: 50px 24px 20px 24px;
             text-align: center;
-            flex: none; /* Just takes the height it needs for the text */
+            flex: none; 
           }
           .left-bg-glow {
             width: 100%;
@@ -319,16 +352,14 @@ const Login = () => {
             font-size: 0.95rem;
           }
           
-          /* ✅ Form now strictly centers in the remaining screen space */
           .right-side {
             padding: 20px 24px 60px 24px;
-            flex: 1; /* Expands to fill all remaining vertical space */
+            flex: 1; 
             display: flex;
-            align-items: center; /* Centers horizontally */
-            justify-content: center; /* Centers vertically */
+            align-items: center; 
+            justify-content: center; 
           }
           
-          /* ✅ Form container box styles removed entirely for mobile */
           .form-container {
             background: transparent;
             padding: 0;
@@ -351,7 +382,6 @@ const Login = () => {
 
       <div className="split-layout">
         
-        {/* LEFT SIDE - GRADIENT ONLY */}
         <div className="left-side">
           <div className="left-bg-glow"></div>
           <motion.div 
@@ -367,7 +397,6 @@ const Login = () => {
           </motion.div>
         </div>
 
-        {/* RIGHT SIDE - FORM */}
         <div className="right-side">
           <div className="bg-glow"></div>
           

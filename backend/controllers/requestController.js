@@ -26,7 +26,7 @@ export const getRequests = async (req, res) => {
     let requests = [];
 
     if (role === "student") {
-      requests = await Request.find({ studentId: userId }).populate("counsellorId", "name email");
+      requests = await Request.find({ studentId: userId }).populate("counsellorId", "name email workStartTime workEndTime");
     } else if (role === "counsellor" || role === "counceller" || role === "counseller") {
       requests = await Request.find({ counsellorId: userId }).populate("studentId", "name email");
     } else if (role === "admin") {
@@ -78,8 +78,9 @@ export const getCounsellors = async (req, res) => {
   try {
     const counsellors = await User.find({ 
       role: { $regex: /counsel|councel/i }, 
-      isVerified: true 
-    }).select("name email _id");
+      isVerified: true,
+      isBanned: { $ne: true }
+    }).select("name email _id workStartTime workEndTime averageRating totalRatings");
     
     res.status(200).json(counsellors);
   } catch (error) {

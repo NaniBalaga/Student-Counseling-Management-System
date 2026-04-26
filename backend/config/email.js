@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config(); // ✅ LOAD HERE ALSO
+dotenv.config();
 
 import nodemailer from "nodemailer";
 
@@ -16,9 +16,9 @@ const transporter = nodemailer.createTransport({
 
 transporter.verify((err, success) => {
   if (err) {
-    console.log("❌ Email Error:", err);
+    console.log("Email Error:", err);
   } else {
-    console.log("✅ Email Server Ready");
+    console.log("Email Server Ready");
   }
 });
 

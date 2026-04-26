@@ -43,6 +43,12 @@ const requestSchema = new mongoose.Schema({
   reply: {
     type: String,
   },
+  // NEW FIELD
+  rating: {
+    type: Number,
+    min: 1,
+    max: 5
+  },
   repliedAt: {
     type: Date,
   },

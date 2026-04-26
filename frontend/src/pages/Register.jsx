@@ -5,44 +5,129 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Mail, Phone, Lock, Calendar, BookOpen,
   KeyRound, ShieldCheck, GraduationCap, Briefcase,
-  ArrowLeft, ChevronRight
+  ArrowLeft, ChevronRight, Eye, EyeOff, Info,
+  CheckCircle2, Circle
 } from "lucide-react";
 
-// ✅ MOVED OUTSIDE: This prevents the input from losing focus on every keystroke
-const InputField = ({ icon: Icon, type, name, placeholder, options, formData, handleChange, errors }) => (
-  <div className="input-wrapper">
-    <div className="input-container">
-      <Icon className="input-icon" size={16} />
-      {type === "select" ? (
-        <select
-          name={name}
-          value={formData[name]}
-          onChange={handleChange}
-          className={`input-field select-field ${errors[name] ? 'input-error' : ''}`}
-        >
-          <option value="" disabled>{placeholder}</option>
-          {options.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type={type}
-          name={name}
-          placeholder={placeholder}
-          value={formData[name]}
-          onChange={handleChange}
-          className={`input-field ${errors[name] ? 'input-error' : ''}`}
-        />
+// MOVED OUTSIDE: This prevents the input from losing focus on every keystroke
+const InputField = ({ icon: Icon, type, name, placeholder, options, formData, handleChange, errors, helperText, isValid }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+  const inputType = isPassword ? (showPassword ? "text" : "password") : type;
+  
+  // Show the green tick only if the field is valid AND it's not the password field
+  // (Password field already has the live criteria list below it)
+  const showValidTick = isValid && !isPassword;
+
+  // Real-time password criteria logic
+  const isPasswordValid = (pw) => ({
+    length: pw.length >= 8,
+    upper: /[A-Z]/.test(pw),
+    number: /[0-9]/.test(pw),
+    special: /[^A-Za-z0-9]/.test(pw),
+  });
+
+  const pwCriteria = name === "password" ? isPasswordValid(formData.password) : null;
+
+  return (
+    <div className="input-wrapper">
+      <div className="input-container">
+        <Icon className="input-icon" size={16} />
+        {type === "select" ? (
+          <>
+            <select
+              name={name}
+              value={formData[name]}
+              onChange={handleChange}
+              className={`input-field select-field ${errors[name] ? 'input-error' : ''} ${showValidTick ? 'has-right-icon' : ''}`}
+            >
+              <option value="" disabled>{placeholder}</option>
+              {options.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            {showValidTick && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="valid-tick"
+              >
+                <CheckCircle2 size={16} color="#4ade80" />
+              </motion.div>
+            )}
+          </>
+        ) : (
+          <>
+            <input
+              type={inputType}
+              name={name}
+              placeholder={placeholder}
+              value={formData[name]}
+              onChange={handleChange}
+              className={`input-field ${errors[name] ? 'input-error' : ''} ${(isPassword || showValidTick) ? 'has-right-icon' : ''}`}
+            />
+            
+            {/* Password Eye Toggle */}
+            {isPassword && (
+              <button 
+                type="button" 
+                className="password-toggle" 
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex="-1"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            )}
+
+            {/* Live Validation Tick */}
+            {showValidTick && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="valid-tick"
+              >
+                <CheckCircle2 size={16} color="#4ade80" />
+              </motion.div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Dynamic Password Strength Status UI */}
+      {name === "password" && (
+        <div className="password-criteria">
+          <div className={`criteria-item ${pwCriteria.length ? 'met' : ''}`}>
+            {pwCriteria.length ? <CheckCircle2 size={12} /> : <Circle size={12} />}
+            <span>8+ characters</span>
+          </div>
+          <div className={`criteria-item ${pwCriteria.upper ? 'met' : ''}`}>
+            {pwCriteria.upper ? <CheckCircle2 size={12} /> : <Circle size={12} />}
+            <span>Uppercase letter</span>
+          </div>
+          <div className={`criteria-item ${pwCriteria.number ? 'met' : ''}`}>
+            {pwCriteria.number ? <CheckCircle2 size={12} /> : <Circle size={12} />}
+            <span>Number</span>
+          </div>
+          <div className={`criteria-item ${pwCriteria.special ? 'met' : ''}`}>
+            {pwCriteria.special ? <CheckCircle2 size={12} /> : <Circle size={12} />}
+            <span>Special character</span>
+          </div>
+        </div>
       )}
+
+      {/* Dynamic Error or Helper Text */}
+      {errors[name] ? (
+        <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="error-text">
+          {errors[name]}
+        </motion.p>
+      ) : helperText && name !== "password" ? (
+        <p className="helper-text">{helperText}</p>
+      ) : null}
     </div>
-    {errors[name] && (
-      <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="error-text">
-        {errors[name]}
-      </motion.p>
-    )}
-  </div>
-);
+  );
+};
 
 const Register = () => {
   const navigate = useNavigate();
@@ -64,6 +149,11 @@ const Register = () => {
 
   // HANDLE INPUT CHANGE
   const handleChange = (e) => {
+    // Only allow digits in mobile field
+    if (e.target.name === "mobile" && e.target.value !== "" && !/^\d+$/.test(e.target.value)) {
+      return;
+    }
+
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -80,15 +170,32 @@ const Register = () => {
 
     if (!role) newErrors.role = "Select a role";
     if (formData.name.length < 4) newErrors.name = "Name must be at least 4 characters";
-    if (!formData.email.includes("@")) newErrors.email = "Enter valid email";
-    if (!/^\d{10}$/.test(formData.mobile)) newErrors.mobile = "Mobile must be 10 digits";
-    if (!formData.password) newErrors.password = "Password is required";
+    if (!formData.email.includes("@")) newErrors.email = "Enter a valid email address";
+    if (!/^\d{10}$/.test(formData.mobile)) newErrors.mobile = "Mobile number must be exactly 10 digits";
+    
+    // Strict Password Validation based on criteria UI
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (
+      formData.password.length < 8 || 
+      !/[A-Z]/.test(formData.password) || 
+      !/[0-9]/.test(formData.password) || 
+      !/[^A-Za-z0-9]/.test(formData.password)
+    ) {
+      newErrors.password = "Please meet all password requirements above";
+    }
 
     // STUDENT VALIDATION
     if (role === "student") {
       if (!formData.gender) newErrors.gender = "Select gender";
       if (!formData.dob) newErrors.dob = "Select DOB";
-      if (!formData.academicYear) newErrors.academicYear = "Enter academic year";
+      
+      // Strict Academic Year Formatting (YYYY-YYYY)
+      if (!formData.academicYear) {
+        newErrors.academicYear = "Enter academic year";
+      } else if (!/^\d{4}-\d{4}$/.test(formData.academicYear)) {
+        newErrors.academicYear = "Format must be exactly YYYY-YYYY (e.g., 2024-2028)";
+      }
     }
 
     // SECRET CODE VALIDATION
@@ -126,7 +233,7 @@ const Register = () => {
 
       } catch (error) {
         console.log(error);
-        alert(error.response?.data?.message || "Register failed");
+        alert(error.response?.data?.message || "Registration failed");
       } finally {
         setIsLoading(false);
       }
@@ -146,8 +253,8 @@ const Register = () => {
           box-sizing: border-box;
           margin: 0;
           padding: 0;
-          -ms-overflow-style: none;  /* IE and Edge */
-          scrollbar-width: none;  /* Firefox */
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
         
         .split-layout {
@@ -333,6 +440,7 @@ const Register = () => {
           position: absolute;
           left: 14px;
           color: #666;
+          transition: color 0.2s ease;
         }
         .input-field {
           width: 100%;
@@ -345,6 +453,9 @@ const Register = () => {
           outline: none;
           transition: all 0.2s ease;
         }
+        .input-field.has-right-icon {
+          padding-right: 40px;
+        }
         .input-field::placeholder {
           color: #555;
         }
@@ -353,11 +464,61 @@ const Register = () => {
           background: #141414;
           box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.1);
         }
+        .input-field:focus + .input-icon {
+          color: #ffd700;
+        }
+        
+        /* ICONS ON THE RIGHT (EYE OR TICK) */
+        .password-toggle, .valid-tick {
+          position: absolute;
+          right: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .password-toggle {
+          background: none;
+          border: none;
+          color: #666;
+          cursor: pointer;
+          padding: 0;
+          transition: color 0.2s ease;
+        }
+        .password-toggle:hover {
+          color: #ffd700;
+        }
+        
+        /* --- PASSWORD CRITERIA UI --- */
+        .password-criteria {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          margin-top: 8px;
+          padding-left: 4px;
+        }
+        .criteria-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          color: #555;
+          transition: color 0.3s ease;
+        }
+        .criteria-item.met {
+          color: #4ade80; /* Success green */
+        }
+
         .input-error {
-          border-color: #ff4d4d;
+          border-color: #ff4d4d !important;
         }
         .error-text {
           color: #ff4d4d;
+          font-size: 11px;
+          margin-top: 4px;
+          margin-left: 4px;
+        }
+        .helper-text {
+          color: #666;
           font-size: 11px;
           margin-top: 4px;
           margin-left: 4px;
@@ -370,6 +531,33 @@ const Register = () => {
           background: #111;
           color: #fff;
         }
+
+        /* --- INFO NOTE STYLES --- */
+        .info-note {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          background: rgba(255, 215, 0, 0.04);
+          border: 1px solid rgba(255, 215, 0, 0.15);
+          padding: 12px;
+          border-radius: 8px;
+          margin-top: 4px;
+          margin-bottom: 4px;
+        }
+        .info-note-icon {
+          color: #ffd700;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+        .info-note-text {
+          color: #999;
+          font-size: 11.5px;
+          line-height: 1.5;
+        }
+        .info-note-text strong {
+          color: #bbb;
+        }
+
         .submit-btn {
           width: 100%;
           background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%);
@@ -433,7 +621,7 @@ const Register = () => {
           .left-side {
             padding: 50px 24px 20px 24px;
             text-align: center;
-            flex: none; /* Just takes the height it needs for the text */
+            flex: none;
           }
           .left-bg-glow {
             width: 100%;
@@ -451,16 +639,14 @@ const Register = () => {
             font-size: 0.95rem;
           }
           
-          /* ✅ Form now strictly centers in the remaining screen space */
           .right-side {
             padding: 20px 24px 60px 24px;
-            flex: 1; /* Expands to fill all remaining vertical space */
+            flex: 1;
             display: flex;
-            align-items: center; /* Centers horizontally */
-            justify-content: center; /* Centers vertically */
+            align-items: center;
+            justify-content: center;
           }
           
-          /* ✅ Form container box styles removed entirely for mobile */
           .form-container {
             background: transparent;
             padding: 0;
@@ -570,26 +756,41 @@ const Register = () => {
                   </div>
 
                   <form onSubmit={handleSubmit} className="form-layout">
-                    <InputField icon={User} type="text" name="name" placeholder="Full Name" formData={formData} handleChange={handleChange} errors={errors} />
-                    <InputField icon={Mail} type="email" name="email" placeholder="Campus Email" formData={formData} handleChange={handleChange} errors={errors} />
-                    <InputField icon={Phone} type="text" name="mobile" placeholder="Mobile Number" formData={formData} handleChange={handleChange} errors={errors} />
-                    <InputField icon={Lock} type="password" name="password" placeholder="Password" formData={formData} handleChange={handleChange} errors={errors} />
+                    {/* Live Validation Logic Passed Here */}
+                    <InputField icon={User} type="text" name="name" placeholder="Full Name" formData={formData} handleChange={handleChange} errors={errors} helperText="Must be at least 4 characters." isValid={formData.name.length >= 4} />
+                    
+                    <InputField icon={Mail} type="email" name="email" placeholder="Campus Email" formData={formData} handleChange={handleChange} errors={errors} isValid={formData.email.includes("@") && formData.email.length > 5} />
+                    
+                    <InputField icon={Phone} type="text" name="mobile" placeholder="Mobile Number" formData={formData} handleChange={handleChange} errors={errors} helperText="Enter exactly 10 digits." isValid={/^\d{10}$/.test(formData.mobile)} />
+                    
+                    {/* Password has its own internal validation UI below it */}
+                    <InputField icon={Lock} type="password" name="password" placeholder="Password" formData={formData} handleChange={handleChange} errors={errors} isValid={false} />
 
                     {/* STUDENT EXTRA FIELDS */}
                     {role === "student" && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="form-layout">
-                        <InputField icon={User} type="select" name="gender" placeholder="Select Gender" options={["Male", "Female", "Other"]} formData={formData} handleChange={handleChange} errors={errors} />
-                        <InputField icon={Calendar} type="date" name="dob" placeholder="Date of Birth" formData={formData} handleChange={handleChange} errors={errors} />
-                        <InputField icon={BookOpen} type="text" name="academicYear" placeholder="Academic Year (e.g., 2024-2025)" formData={formData} handleChange={handleChange} errors={errors} />
+                        <InputField icon={User} type="select" name="gender" placeholder="Select Gender" options={["Male", "Female", "Other"]} formData={formData} handleChange={handleChange} errors={errors} isValid={formData.gender !== ""} />
+                        
+                        <InputField icon={Calendar} type="date" name="dob" placeholder="Date of Birth" formData={formData} handleChange={handleChange} errors={errors} isValid={formData.dob !== ""} />
+                        
+                        <InputField icon={BookOpen} type="text" name="academicYear" placeholder="Academic Year" formData={formData} handleChange={handleChange} errors={errors} helperText="Format: YYYY-YYYY (e.g., 2024-2028)" isValid={/^\d{4}-\d{4}$/.test(formData.academicYear)} />
                       </motion.div>
                     )}
 
                     {/* SECRET CODE FIELDS */}
                     {(role === "counsellor" || role === "admin") && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
-                        <InputField icon={KeyRound} type="password" name="secretCode" placeholder={`${role.charAt(0).toUpperCase() + role.slice(1)} Secret Code`} formData={formData} handleChange={handleChange} errors={errors} />
+                        <InputField icon={KeyRound} type="password" name="secretCode" placeholder={`${role.charAt(0).toUpperCase() + role.slice(1)} Secret Code`} formData={formData} handleChange={handleChange} errors={errors} isValid={formData.secretCode.length >= 5} />
                       </motion.div>
                     )}
+
+                    {/* Registration Verification Note */}
+                    <div className="info-note">
+                      <Info className="info-note-icon" size={16} />
+                      <p className="info-note-text">
+                        <strong>Note:</strong> After successful registration, you will receive an email to verify your account. Please ensure your email is correct.
+                      </p>
+                    </div>
 
                     <button
                       type="submit"

@@ -5,7 +5,7 @@ import {
   updateRequestStatus,
   replyToRequest,
   getCounsellors,
-  deleteRequest // ✅ Imported
+  deleteRequest
 } from "../controllers/requestController.js";
 
 const router = express.Router();
@@ -15,6 +15,6 @@ router.get("/user/:userId/:role", getRequests);
 router.put("/status/:id", updateRequestStatus);
 router.put("/reply/:id", replyToRequest);
 router.get("/counsellors", getCounsellors);
-router.delete("/:id", deleteRequest); // ✅ Admin Route
+router.delete("/:id", deleteRequest);
 
 export default router;

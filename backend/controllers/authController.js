@@ -116,6 +116,14 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ message: "User not found" });
     }
 
+    // ✅ NEW: Check if user is banned
+    if (user.isBanned) {
+      return res.status(403).json({ 
+        message: `Your account has been banned. Reason: ${user.banReason || "Violation of terms"}`,
+        isBanned: true
+      });
+    }
+
     if (!user.isVerified) {
       return res.status(400).json({
         message: "Please verify your email first. Check your inbox.",
@@ -161,6 +169,76 @@ export const deleteUser = async (req, res) => {
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
     res.status(200).json({ message: "User removed successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ NEW: BAN USER (FOR ADMIN)
+export const banUser = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { 
+        isBanned: true, 
+        banReason: reason || "Violation of terms",
+        bannedAt: Date.now()
+      },
+      { new: true }
+    ).select("-password");
+    
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.status(200).json({ message: "User has been banned", user });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ NEW: UNBAN USER (FOR ADMIN)
+export const unbanUser = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { 
+        isBanned: false, 
+        banReason: "",
+        bannedAt: null
+      },
+      { new: true }
+    ).select("-password");
+    
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.status(200).json({ message: "User has been unbanned", user });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ NEW: UPDATE WORKING HOURS (FOR COUNSELLOR)
+export const updateWorkingHours = async (req, res) => {
+  try {
+    const { workStartTime, workEndTime } = req.body;
+    
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { workStartTime, workEndTime },
+      { new: true }
+    ).select("-password");
+    
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.status(200).json({ message: "Working hours updated successfully", user });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ NEW: CHECK BAN STATUS
+export const checkBanStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("isBanned banReason");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.status(200).json(user);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
