@@ -6,19 +6,19 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import requestRoutes from "./routes/requestRoutes.js";
-import nodemailer from "nodemailer"; // ✅ Added for SMTP fix
 import ratingRoutes from "./routes/ratingRoutes.js";
+import nodemailer from "nodemailer";
 
 const app = express();
 
-// ✅ middleware
+// middleware
 app.use(cors());
 app.use(express.json());
 
-// ✅ connect DB AFTER env load
+// DB connection
 connectDB();
 
-// ✅ routes
+// routes
 app.use("/api/auth", authRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/ratings", ratingRoutes);
@@ -27,15 +27,11 @@ app.get("/", (req, res) => {
   res.send("API Running...");
 });
 
-// ✅ Added: SMTP Email Sender Route
-// You can use this exact logic inside your auth/request controllers
+// Email route
 app.post("/api/send-email", async (req, res) => {
   try {
     const transporter = nodemailer.createTransport({
       service: "gmail",
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -44,24 +40,34 @@ app.post("/api/send-email", async (req, res) => {
 
     const mailOptions = {
       from: `"Student Counselling" <${process.env.EMAIL_USER}>`,
-      to: req.body.email, // Pass {"email": "target@gmail.com"} in Postman
+      to: req.body.email,
       subject: req.body.subject || "System Notification",
-      text: req.body.message || "Your SMTP is working perfectly!",
+      text: req.body.message || "SMTP working!",
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully: %s", info.messageId);
-    
-    res.status(200).json({ success: true, message: "Email sent successfully!", messageId: info.messageId });
+
+    res.status(200).json({
+      success: true,
+      message: "Email sent",
+      messageId: info.messageId,
+    });
   } catch (error) {
-    console.error("Error sending email: ", error);
-    res.status(500).json({ success: false, message: "Failed to send email", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Email failed",
+      error: error.message,
+    });
   }
 });
 
-// ✅ start server
-const PORT = process.env.PORT || 5000;
+// ❗ IMPORTANT: Export app (required for Vercel)
+export default app;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// ❗ Only run locally
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
